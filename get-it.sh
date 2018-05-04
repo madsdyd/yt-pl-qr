@@ -34,6 +34,10 @@ which curl &> /dev/null || die "Unable to find the program curl"
 which qrencode &> /dev/null || die "Unable to find the program qrencode"
 which jq &> /dev/null || die "Unable to find the program jq"
 
+# The frame used for overlay
+FRAME=film-frame-alpha.png
+BACKGROUND=background.png
+
 # Approach
 # 1: Get the list of videos in json format, store to tmp file
 ALLINFO=$(mktemp)
@@ -81,30 +85,31 @@ do
 
     # Status information
     echo "Item $i has id $VIDEOID and title $TITLE"
-    TITLE=$(echo $TITLE | sed 's/^\"//;s/\"$//')
+
+    TITLE=$(echo $TITLE | sed 's/^\"//;s/\"$//;s/\s/_/g')
     VIDEOID=$(echo $VIDEOID | sed 's/^\"//;s/\"$//')
     
     # 3: Use curl to retrieve the thumbnail in high resolution
     echo "Getting thumbnail in high res"
     THUMB=$(mktemp --suffix=.jpg)
-    # Maxresdefault does not seem to work for all, so use hqdefault
+    # Maxresdefault does not seem to work for all, so use hqdefault. This is 480x360 in all my tests...
     curl -s -o "$THUMB" 'http://img.youtube.com/vi/'$VIDEOID'/hqdefault.jpg' || die "Unable to get thumb for item $i, videoId=$VIDEOID"
 
     # 4: Use qrencode to create the qrcode
-    # 5: Scale the image and overlay qrencode on it
+    QR=$(mktemp --suffix=.png)
+    qrencode -o "$QR" -t png --size=6 'https://www.youtube.com/watch?v='$VIDEOID || die "Error calling qrencode for item $i, videoId=$VIDEOID"
+    # 5: (Scale the image) and overlay qrencode on it, together with a frame...
+    TMPIMG1=$(mktemp --suffix=.png)
+    # First the film frame and thumb.
+    composite -gravity center "$THUMB" film-frame-alpha.png "$TMPIMG1" || die "Unable to composite film frame on thumb for item $i, videoId=$VIDEOID"
+    # Then, put it on the background
+    TMPIMG2=$(mktemp --suffix=.png)
+    convert "$BACKGROUND" "$TMPIMG1" -geometry +96+0 -composite "$TMPIMG2"
+    # And, put the qr on top, then into the final picture
     # 6: Save the final image, using the title of the video as the name
-
-
+    OUTPUT="$TITLE-$i.png"
+    convert "$TMPIMG2" "$QR" -geometry +0+97 -composite "$OUTPUT"
+    echo "Final image in $OUTPUT"
     
 done
 
-# Note: Very little error checking is done...
-
-#
-# 1: Get the list of videos in json format, store to tmp file
-# 2: "Parse" all the videos for title and videoId
-# For each
-# 3: Use curl to retrieve the thumbnail in high resolution
-# 4: Use qrencode to create the qrcode
-# 5: Scale the image and overlay qrencode on it
-# 6: Save the final image, using the title of the video as the name
