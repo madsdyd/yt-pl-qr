@@ -107,7 +107,7 @@ do
     convert "$BACKGROUND" "$TMPIMG1" -geometry +96+0 -composite "$TMPIMG2"
     # And, put the qr on top, then into the final picture
     # 6: Save the final image, using the title of the video as the name
-    OUTPUT="$TITLE-$i.png"
+    OUTPUT="$i-$TITLE.png"
     convert "$TMPIMG2" "$QR" -geometry +0+97 -composite "$OUTPUT"
     echo "Final image in $OUTPUT"
     
