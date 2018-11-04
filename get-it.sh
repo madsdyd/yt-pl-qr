@@ -2,9 +2,6 @@
 
 # Script to create a number of images with qr codes from a youtube playlist
 
-
-
-
 ######################################################################
 # Function to die for...
 function die() {
@@ -30,13 +27,16 @@ APIKEY="$2"
 test "x$APIKEY" != "x" || usage
 
 # We need the program curl and qrencode and jq
+which dirname &> /dev/null || die "Unable to find the program dirname"
 which curl &> /dev/null || die "Unable to find the program curl"
 which qrencode &> /dev/null || die "Unable to find the program qrencode"
 which jq &> /dev/null || die "Unable to find the program jq"
 
+BASEDIR=$(dirname $0) || die "Unable to call dirname for $0. Please install dirname"
+
 # The frame used for overlay
-FRAME=film-frame-alpha.png
-BACKGROUND=background.png
+FRAME="${BASEDIR}/templates/film-frame-alpha.png"
+BACKGROUND="${BASEDIR}/templates/background.png"
 
 # Approach
 # 1: Get the list of videos in json format, store to tmp file
@@ -101,7 +101,7 @@ do
     # 5: (Scale the image) and overlay qrencode on it, together with a frame...
     TMPIMG1=$(mktemp --suffix=.png)
     # First the film frame and thumb.
-    composite -gravity center "$THUMB" film-frame-alpha.png "$TMPIMG1" || die "Unable to composite film frame on thumb for item $i, videoId=$VIDEOID"
+    composite -gravity center "$THUMB" "${FRAME}" "$TMPIMG1" || die "Unable to composite film frame on thumb for item $i, videoId=$VIDEOID"
     # Then, put it on the background
     TMPIMG2=$(mktemp --suffix=.png)
     convert "$BACKGROUND" "$TMPIMG1" -geometry +96+0 -composite "$TMPIMG2"
