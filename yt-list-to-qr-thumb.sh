@@ -127,7 +127,13 @@ do
     KIND=$(jq '.items['$i'].snippet.resourceId.kind' $ALLINFO) || die "Unable to get kind for item $i in response. See $ALLINFO"
     VIDEOID=$(jq '.items['$i'].snippet.resourceId.videoId' $ALLINFO) || die "Unable to get videoId for item $i in response. See $ALLINFO"
     THUMBNAIL=$(jq '.items['$i'].snippet.thumbnails.maxres.url' $ALLINFO) || die "Unable to get thumbnail for item $i in response. See $ALLINFO"
-    
+    if [ "null" = "${THUMBNAIL}" ] ; then
+        THUMBNAIL=$(jq '.items['$i'].snippet.thumbnails.high.url' $ALLINFO) || die "Unable to get thumbnail for item $i in response. See $ALLINFO"
+    fi
+
+    if [ "null" = "${THUMBNAIL}" ] ; then
+        die "Unable to get thumbnail for item $i in response. Tried 'maxres' and 'high'. See $ALLINFO"
+    fi
     # Check we have the right kind, and a title is present
     test -n "$TITLE" || die "Title not set for item $i"
     test "$KIND" = "\"youtube#video\"" || die "Item $i does not have kind youtube#video, but $KIND"
@@ -143,6 +149,7 @@ do
 
     debug "Videoid sanitized to ${VIDEOID}"
     debug "Title sanitized to ${TITLE}"
+    debug "Thumbnail sanitized to €{THUMBNAIL}"
     
     # 3: Use curl to retrieve the thumbnail in high resolution
     info "Getting thumbnail in high res from ${THUMBNAIL}"
@@ -185,7 +192,5 @@ do
     info "Final image in $OUTPUT"
     debug "Dimensions of final image:" $(identify -format '%wx%h' "${OUTPUT}")
 
-    exit 1
-    
 done
 
