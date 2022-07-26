@@ -73,8 +73,16 @@ which jq &> /dev/null || die "Unable to find the program jq"
 BASEDIR=$(dirname $0) || die "Unable to call dirname for $0. Please install dirname"
 
 # The frame used for overlay
-FRAME="${BASEDIR}/templates/film-frame-alpha.png"
-BACKGROUND="${BASEDIR}/templates/background.png"
+# FRAME="${BASEDIR}/templates/film-frame-alpha.png"
+FRAME="${BASEDIR}/templates/film-frame-high.png"
+#BACKGROUND="${BASEDIR}/templates/background.png"
+BACKGROUND="${BASEDIR}/templates/background-high.png"
+FRAME_INNER_DIMENSIONS="1356x744"
+FRAME_X_OFFSET=351
+QR_SIZE=17
+QR_Y_OFFSET=175
+
+
 
 # Approach
 # 1: Get the list of videos in json format, store to tmp file
@@ -143,17 +151,17 @@ do
     curl -s -o "$THUMB" "${THUMBNAIL}" || die "Unable to get thumb for item $i, videoId=$VIDEOID"
     debug "Dimensions of thumb:" $(identify -format '%wx%h' "${THUMB}")
 
-    # TESTING: Resize thumb to 480x360
+    # TESTING: Resize thumb to frame inner dimensions
     info "Resizing thumb"
     THUMB2=$(mktemp --suffix=.jpg)
-    convert "${THUMB}" -resize 480x360 "${THUMB2}"
+    convert "${THUMB}" -resize "${FRAME_INNER_DIMENSIONS}" "${THUMB2}"
     THUMB=${THUMB2}
     debug "Dimensions of thumb after resize:" $(identify -format '%wx%h' "${THUMB}")
     
     
     # 4: Use qrencode to create the qrcode
     QR=$(mktemp --suffix=.png)
-    qrencode -o "$QR" -t png --size=6 'https://www.youtube.com/watch?v='$VIDEOID || die "Error calling qrencode for item $i, videoId=$VIDEOID"
+    qrencode -o "$QR" -t png --size=${QR_SIZE} 'https://www.youtube.com/watch?v='$VIDEOID || die "Error calling qrencode for item $i, videoId=$VIDEOID"
     debug "Dimensions of qr:" $(identify -format '%wx%h' "${QR}")
     # 5: (Scale the image) and overlay qrencode on it, together with a frame...
     TMPIMG1=$(mktemp --suffix=.png)
@@ -162,17 +170,18 @@ do
     debug "Dimensions of frame:" $(identify -format '%wx%h' "${FRAME}")
     composite -gravity center "$THUMB" "${FRAME}" "$TMPIMG1" || die "Unable to composite film frame on thumb for item $i, videoId=$VIDEOID"
     debug "Dimensions of ${TMPIMG1}:" $(identify -format '%wx%h' "${TMPIMG1}")
+
     # Then, put it on the background
     info "Adding background"
     debug "Dimensions of background:" $(identify -format '%wx%h' "${BACKGROUND}") 
     TMPIMG2=$(mktemp --suffix=.png)
-    convert "$BACKGROUND" "$TMPIMG1" -geometry +96+0 -composite "$TMPIMG2" || die "Unable to convert file ${TMPIMG1}"
+    convert "$BACKGROUND" "$TMPIMG1" -geometry +${FRAME_X_OFFSET}+0 -composite "$TMPIMG2" || die "Unable to convert file ${TMPIMG1}"
     debug "Dimensions of tmpimg2:" $(identify -format '%wx%h' "${TMPIMG2}")
     # And, put the qr on top, then into the final picture
     # 6: Save the final image, using the title of the video as the name
     info "Putting QR code on top"
     OUTPUT="$i-$TITLE.png"
-    convert "$TMPIMG2" "$QR" -geometry +0+97 -composite "$OUTPUT" || die "Unable to convert file ${TMPIMG2} to ${OUTPUT}"
+    convert "$TMPIMG2" "$QR" -geometry +0+${QR_Y_OFFSET} -composite "$OUTPUT" || die "Unable to convert file ${TMPIMG2} to ${OUTPUT}"
     info "Final image in $OUTPUT"
     debug "Dimensions of final image:" $(identify -format '%wx%h' "${OUTPUT}")
 
